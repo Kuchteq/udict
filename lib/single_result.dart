@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:udict/linguee_response.dart';
 
@@ -26,12 +27,14 @@ class SingleResult extends StatelessWidget {
             children: response.translations!
                 .where((v) => v.featured == true)
                 .map((translation) {
-              return TranslationUnit(translation: translation);
+              return TranslationUnit(translation: translation, source: response.text!);
             }).toList(),
           ),
           Padding(
             padding: const EdgeInsets.only(left: 8.0, bottom: 10),
-            child: Text("Less common", style: textTheme.titleMedium!.copyWith(fontWeight: FontWeight.w300, fontStyle: FontStyle.italic)),
+            child: Text("Less common",
+                style: textTheme.titleMedium!
+                    .copyWith(fontWeight: FontWeight.w300, fontStyle: FontStyle.italic)),
           ),
           Padding(
             padding: const EdgeInsets.only(left: 20.0),
@@ -52,10 +55,18 @@ class SingleResult extends StatelessWidget {
 
 class TranslationUnit extends StatelessWidget {
   final Translation translation;
-  const TranslationUnit({super.key, required this.translation});
-
+  final String source;
+  const TranslationUnit({super.key, required this.translation, required this.source});
   @override
   Widget build(BuildContext context) {
+    final snackBar = SnackBar(
+      margin: EdgeInsets.fromLTRB(10, 0, 10, 90),
+      animation: null,
+      behavior: SnackBarBehavior.floating,
+      duration: Duration(seconds: 1),
+      content: Text('Added to saved'),
+    );
+
     final textTheme = Theme.of(context).textTheme;
     return Padding(
         padding: EdgeInsets.only(
@@ -71,6 +82,10 @@ class TranslationUnit extends StatelessWidget {
                 TextButton(
                     onPressed: () {
                       getIt<LingueeClientRepository>().fetchTerm(translation.text!);
+                    },
+                    onLongPress: () {
+                      SavedTranslations(source, translation).saveTrans();
+                      ScaffoldMessenger.of(context).showSnackBar(snackBar);
                     },
                     child: Text(translation.text ?? "", style: textTheme.headlineSmall)),
                 Text(translation.pos ?? "", style: textTheme.labelLarge),

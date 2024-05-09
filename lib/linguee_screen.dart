@@ -33,108 +33,115 @@ class _LingueeScreenState extends State<LingueeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: ValueListenableBuilder(
-            valueListenable: lingueeClient.state,
-            builder: (context, value, _) {
-              return value == ClientState.load
-                  ? const CircularProgressIndicator()
-                  : lingueeClient.currentQuery != ""
-                      ? Text("Results for ${lingueeClient.currentQuery}")
-                      : const SizedBox.shrink();
-            }),
-        actions: [
-          IconButton(
-              onPressed: () {
-                showDialog<void>(
-                  context: context,
-                  builder: (context) => AlertDialog(
-                    title: const Text('What server?'),
-                    content: ValueListenableBuilder(
-                        valueListenable: lingueeClient.server,
-                        builder: (context, va, _) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              RadioListTile(
-                                title: const Text('Local'),
-                                value: "http://127.0.0.1:8000",
-                                groupValue: lingueeClient.server.value,
-                                onChanged: (value) {
-                                  lingueeClient.server.value = value;
-                                },
-                              ),
-                              RadioListTile(
-                                title: const Text('Server'),
-                                value: "https://kuchta.dev/linguee",
-                                groupValue: lingueeClient.server.value,
-                                onChanged: (value) {
-                                  lingueeClient.server.value = value;
-                                },
-                              ),
-                              RadioListTile(
-                                title: const Text('Public server'),
-                                value: "https://linguee-api.fly.dev",
-                                groupValue: lingueeClient.server.value,
-                                onChanged: (value) {
-                                  lingueeClient.server.value = value;
-                                },
-                              ),
-                            ],
-                          );
-                        }),
-                    actions: <Widget>[
-                      TextButton(
-                        child: const Text('Dismiss'),
-                        onPressed: () => Navigator.of(context).pop(),
-                      ),
-                    ],
-                  ),
-                );
-              },
-              icon: const Icon(Icons.settings))
-        ],
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (bool didPop) { 
+         LingueeClientRepository client =  getIt<LingueeClientRepository>();
+         client.termStream.add(client.termsStack.value.removeLast());
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: ValueListenableBuilder(
+              valueListenable: lingueeClient.state,
+              builder: (context, value, _) {
+                return value == ClientState.load
+                    ? const CircularProgressIndicator()
+                    : lingueeClient.currentQuery != ""
+                        ? Text("Results for ${lingueeClient.currentQuery}")
+                        : const SizedBox.shrink();
+              }),
+          actions: [
+            IconButton(
+                onPressed: () {
+                  showDialog<void>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Which server?'),
+                      content: ValueListenableBuilder(
+                          valueListenable: lingueeClient.server,
+                          builder: (context, va, _) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: <Widget>[
+                                RadioListTile(
+                                  title: const Text('Local'),
+                                  value: "http://127.0.0.1:8000",
+                                  groupValue: lingueeClient.server.value,
+                                  onChanged: (value) {
+                                    lingueeClient.server.value = value;
+                                  },
+                                ),
+                                RadioListTile(
+                                  title: const Text('Server'),
+                                  value: "https://example.com/linguee",
+                                  groupValue: lingueeClient.server.value,
+                                  onChanged: (value) {
+                                    lingueeClient.server.value = value;
+                                  },
+                                ),
+                                RadioListTile(
+                                  title: const Text('Public server'),
+                                  value: "https://linguee-api.fly.dev",
+                                  groupValue: lingueeClient.server.value,
+                                  onChanged: (value) {
+                                    lingueeClient.server.value = value;
+                                  },
+                                ),
+                              ],
+                            );
+                          }),
+                      actions: <Widget>[
+                        TextButton(
+                          child: const Text('Dismiss'),
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.settings))
+          ],
+        ),
+        body: StreamBuilder(
+          stream: lingueeClient.termStream.stream,
+          builder: (context, snapshot) {
+            //if (value == ClientState.load) return const CircularProgressIndicator();
+      
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(
+                  child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.menu_book, size: 40),
+                  SizedBox(width: 10),
+                  Text("Your Linguee's best client"),
+                ],
+              ));
+            } else if (snapshot.hasError) {
+              return const Center(child: Text("Can't retrieve udictlation from Linguee Api"));
+            } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: CustomScrollView(
+                    // Center is a layout widget. It takes a single child and positions it
+                    // in the middle of the parent.
+                    slivers: [
+                      SliverList(
+                          delegate: SliverChildBuilderDelegate(
+                              childCount: snapshot.data?.length,
+                              (context, index) =>
+                                  SingleResult(response: snapshot.data![index]))),
+                      const SliverPadding(padding: EdgeInsets.only(top: 80))
+                    ]),
+              );
+            }
+            debugPrint(snapshot.data.toString());
+            return const Center(child: Text("Nothing"));
+          },
+        ),
+        floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+        floatingActionButton: SearchBottom(onSubmitted: fetchResults)
       ),
-      body: StreamBuilder(
-        stream: lingueeClient.termStream.stream,
-        builder: (context, snapshot) {
-          //if (value == ClientState.load) return const CircularProgressIndicator();
-
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-                child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.menu_book, size: 40),
-                SizedBox(width: 10),
-                Text("Your Leo best dictionary"),
-              ],
-            ));
-          } else if (snapshot.hasError) {
-            return const Center(child: Text("Can't retrieve udictlation from Linguee Api"));
-          } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-            return Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: CustomScrollView(
-                  // Center is a layout widget. It takes a single child and positions it
-                  // in the middle of the parent.
-                  slivers: [
-                    SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                            childCount: snapshot.data?.length,
-                            (context, index) =>
-                                SingleResult(response: snapshot.data![index]))),
-                    const SliverPadding(padding: EdgeInsets.only(top: 80))
-                  ]),
-            );
-          }
-          debugPrint(snapshot.data.toString());
-          return const Center(child: Text("Nothing"));
-        },
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: SearchBottom(onSubmitted: fetchResults)
     );
   }
 }

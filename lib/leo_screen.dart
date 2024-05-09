@@ -15,7 +15,7 @@ class LeoScreen extends StatefulWidget {
 
 class _LeoScreenState extends State<LeoScreen> {
   final LeoClientRepository leoClientRepository = getIt<LeoClientRepository>();
-
+  
   void fetchResults(String text) {
     leoClientRepository.currentQuery = text;
     leoClientRepository.fetchTerm(text);
@@ -58,7 +58,7 @@ class _LeoScreenState extends State<LeoScreen> {
                 ));
               } else if (snapshot.hasError) {
                 return const Center(
-                    child: Text("Can't retrieve udictlation from Linguee Api"));
+                    child: Text("Can't retrieve udictlation from Leo Api"));
               } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                 return Padding(
                   padding: const EdgeInsets.all(8.0),
